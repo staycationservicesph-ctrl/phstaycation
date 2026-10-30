@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Host dashboard | Manila Prime Staycation</title>
+<link rel="stylesheet" href="/styles.css">
+<link rel="stylesheet" href="/admin.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <span class="logo"><b>Manila Prime Staycation</b><small>Host dashboard</small></span>
+    <button class="pill out sm" id="logout" hidden>Log out</button>
+  </div>
+</header>
+<main class="wrap adm">
+  <div id="msg" class="note" role="status" hidden></div>
+
+  <section id="login" hidden>
+    <h1>Host login</h1>
+    <form id="login-form" class="loginbox" autocomplete="on">
+      <div class="fld"><label for="pw">Password</label><input id="pw" type="password" autocomplete="current-password" maxlength="200" required></div>
+      <div class="fld" id="code-w" hidden><label for="code">6-digit code from your authenticator app</label><input id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" pattern="[0-9 ]*" placeholder="123456"></div>
+      <button class="pill" type="submit" id="login-btn">Log in</button>
+    </form>
+  </section>
+
+  <section id="dash" hidden>
+    <div id="tf-warn" class="note bad" role="alert" hidden><b>2-step login is OFF.</b> Anyone who learns your password can change prices and bookings. Turn it on: on your computer run <code>node scripts/make-2fa.js</code> in the backend folder, add the key it prints as <code>ADMIN_TOTP_SECRET</code> in Render &rarr; Environment, then add it to your authenticator app.</div>
+    <div class="hstats" id="stats"></div>
+
+    <div class="adm-bar">
+      <h2>Bookings</h2>
+      <div class="sel">
+        <select id="f-status" aria-label="Show bookings">
+          <option value="pending">Needs a reply</option>
+          <option value="confirmed">Confirmed</option>
+          <option value="all">Everything</option>
+          <option value="declined">Declined</option>
+          <option value="cancelled">Cancelled</option>
+          <option value="blocked">Blocked dates</option>
+        </select>
+        <button class="pill out sm" id="reload">Refresh</button>
+      </div>
+    </div>
+    <div class="tw"><table class="stack"><thead><tr><th>Reference</th><th>Unit</th><th>Stay</th><th>Guest</th><th>Total</th><th>Status</th><th>Actions</th></tr></thead><tbody id="rows"></tbody></table></div>
+
+    <h2 class="sec">Block dates</h2>
+    <p class="cnt">For maintenance, owner stays, or bookings made elsewhere (Airbnb, phone).</p>
+    <div class="blockf">
+      <div class="fld"><label for="b-unit">Unit</label><select id="b-unit"></select></div>
+      <div class="fld"><label for="b-from">From</label><input type="date" id="b-from"></div>
+      <div class="fld"><label for="b-to">Until (check-out day)</label><input type="date" id="b-to"></div>
+      <div class="fld"><label for="b-note">Note</label><input id="b-note" maxlength="100" placeholder="Optional"></div>
+      <button class="pill" id="b-go">Block dates</button>
+    </div>
+
+    <h2 class="sec">Rooms and availability</h2>
+    <p class="cnt">"On" rooms can be booked on the website. Turn a room "Off" to hide it from guests (existing bookings stay). Rooms are never deleted, so old bookings keep their record. To close single dates instead, use "Block dates" above.</p>
+    <div class="tw"><table><thead><tr><th>Unit</th><th>Details</th><th>Status</th><th></th></tr></thead><tbody id="units"></tbody></table></div>
+    <details id="u-det" class="udet">
+      <summary id="u-sum">Add a room</summary>
+      <form id="u-form" class="uform" autocomplete="off">
+        <div class="fld"><label for="u-id">Unit number</label><input id="u-id" maxlength="15" placeholder="1407" required></div>
+        <div class="fld"><label for="u-tower">Building / tower</label><input id="u-tower" maxlength="60" placeholder="Shore 1 Tower C2" required></div>
+        <div class="fld"><label for="u-beds">Beds</label><input id="u-beds" maxlength="80" placeholder="Queen Bed + Sofa Bed" required></div>
+        <div class="fld wide"><label for="u-desc">Description</label><input id="u-desc" maxlength="300" placeholder="Short sentence guests will read"></div>
+        <div class="fld wide"><label for="u-perks">Perks</label><input id="u-perks" maxlength="160" placeholder="Cozy Living Room + Netflix"></div>
+        <div class="fld"><label for="u-base">Guests included</label><input id="u-base" type="number" min="1" max="4" value="2" required></div>
+        <div class="fld"><label for="u-max">Most guests</label><input id="u-max" type="number" min="1" max="4" value="4" required></div>
+        <div class="fld"><label for="u-extra">Extra guest fee / night</label><input id="u-extra" type="number" min="0" step="1" value="0" required></div>
+        <div class="fld" data-new><label for="u-wd">Sun-Thu rate</label><input id="u-wd" type="number" min="1" step="1" placeholder="1999"></div>
+        <div class="fld" data-new><label for="u-we">Fri/Sat rate</label><input id="u-we" type="number" min="1" step="1" placeholder="2499"></div>
+        <div class="uact"><button class="pill" type="submit" id="u-go">Add room</button> <button class="pill out" type="button" id="u-cancel" hidden>Cancel</button></div>
+      </form>
+    </details>
+
+    <h2 class="sec">Nightly rates</h2>
+    <p class="cnt">Whole pesos. Fri and Sat nights use the weekend rate. "Extra guest" is charged per guest above the unit's base guests, per night.</p>
+    <div class="tw"><table><thead><tr><th>Unit</th><th>Sun-Thu</th><th>Fri/Sat</th><th>Extra guest</th><th></th></tr></thead><tbody id="rates"></tbody></table></div>
+
+    <h2 class="sec">Special date rates</h2>
+    <p class="cnt">Holidays and peak days. These replace the normal rate for every night in the range.</p>
+    <div class="blockf">
+      <div class="fld"><label for="r-unit">Unit</label><select id="r-unit"></select></div>
+      <div class="fld"><label for="r-from">First night</label><input type="date" id="r-from"></div>
+      <div class="fld"><label for="r-to">Last night</label><input type="date" id="r-to"></div>
+      <div class="fld"><label for="r-price">Rate per night</label><input type="number" id="r-price" min="1" step="50" placeholder="3499"></div>
+      <div class="fld"><label for="r-label">Label</label><input id="r-label" maxlength="60" placeholder="Holiday"></div>
+      <button class="pill" id="r-go">Add rate</button>
+    </div>
+    <div class="tw"><table><thead><tr><th>Label</th><th>Unit</th><th>Nights</th><th>Rate</th><th></th></tr></thead><tbody id="rules"></tbody></table></div>
+
+    <h2 class="sec">Group inquiries</h2>
+    <div id="inq"></div>
+
+    <h2 class="sec">Activity log</h2>
+    <p class="cnt">Logins and changes to prices, rooms and bookings (latest 100). "Who" is a short anonymous code for the device, not an address.</p>
+    <div class="tw"><table><thead><tr><th>When</th><th>What</th><th>Details</th><th>Who</th></tr></thead><tbody id="audit"></tbody></table></div>
+  </section>
+</main>
+<script src="/core.js"></script>
+<script src="/admin.js"></script>
+</body>
+</html>

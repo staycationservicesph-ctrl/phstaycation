@@ -1,0 +1,16 @@
+# Netlify: publish this folder. The host dashboard lives on your Render address (cookies must stay on one host),
+# so /admin here just sends you there. Replace CHANGE-ME with your Render name.
+[build]
+  publish = "."
+
+[[redirects]]
+  from = "/admin"
+  to = "https://CHANGE-ME.onrender.com/admin"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/admin.html"
+  to = "https://CHANGE-ME.onrender.com/admin"
+  status = 302
+  force = true
