@@ -1,12 +1,12 @@
-/* Local server for development and tests: serves public/ and the same API the Vercel function serves,
-   with the same security headers as vercel.json. Run:  node server.js   (needs Node 22+) */
+/* The API server (Render runs this). Serves /api/* and, for local development, the ../frontend folder,
+   with the security headers from headers.json. Run:  node server.js   (needs Node 22+) */
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { handle } = require('./lib/app');
 
 const PUBLIC = path.resolve(process.env.STATIC_DIR || path.join(__dirname, '..', 'frontend')); // local dev only: serves the frontend folder next to this one
-const HEADERS = (() => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'vercel.json'), 'utf8')).headers[0].headers; } catch (e) { return []; } })();
+const HEADERS = (() => { try { return JSON.parse(fs.readFileSync(path.join(__dirname, 'headers.json'), 'utf8')); } catch (e) { return []; } })();
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.webp': 'image/webp', '.png': 'image/png', '.svg': 'image/svg+xml', '.json': 'application/json', '.txt': 'text/plain; charset=utf-8', '.xml': 'application/xml', '.ico': 'image/x-icon' };
 
 const server = http.createServer(async (req, res) => {
