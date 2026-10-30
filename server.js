@@ -17,6 +17,8 @@ const server = http.createServer(async (req, res) => {
   if (req.method !== 'GET' && req.method !== 'HEAD') { res.writeHead(405, { Allow: 'GET, HEAD' }); return res.end(); }
   if (p === '/') p = '/index.html';
   if (p === '/admin') { p = '/admin.html'; res.setHeader('X-Robots-Tag', 'noindex, nofollow'); res.setHeader('Cache-Control', 'no-store'); }
+  /* Only website files are public: no dotfiles, no _headers, no functions/ (Cloudflare-only code), no .env.example. */
+  if (p.split('/').some(seg => seg.startsWith('.')) || p === '/_headers' || p.startsWith('/functions/') || !MIME[path.extname(p)]) { res.writeHead(404, { 'Content-Type': 'text/plain' }); return res.end('Not found'); }
   const file = path.normalize(path.join(PUBLIC, p));
   if (!file.startsWith(PUBLIC + path.sep)) { res.writeHead(403); return res.end('Forbidden'); } // no path traversal
   fs.readFile(file, (err, buf) => {

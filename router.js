@@ -48,7 +48,10 @@ function sameSecret(a, b) {
 }
 function clientIp(req) {
   if (TRUSTED_PROXY_SECRET && sameSecret(req.headers['x-proxy-secret'], TRUSTED_PROXY_SECRET) && req.headers['x-client-ip']) return String(req.headers['x-client-ip']).trim();
-  return String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || String(req.headers['x-real-ip'] || '') || (req.socket && req.socket.remoteAddress) || 'unknown';
+  /* No proxy secret (single-service mode, e.g. only Render): the platform's own proxy APPENDS the real visitor address, so the LAST entry
+     is the trustworthy one. The first entry can be forged by the visitor, so it is never used. */
+  const xff = String(req.headers['x-forwarded-for'] || '').split(',').map(x => x.trim()).filter(Boolean);
+  return xff[xff.length - 1] || String(req.headers['x-real-ip'] || '') || (req.socket && req.socket.remoteAddress) || 'unknown';
 }
 
 /* Cross-site request protection. A browser always sends Origin on POST; it must be our own host. */
