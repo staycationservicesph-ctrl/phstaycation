@@ -40,10 +40,11 @@ test('x-client-ip is trusted only with the right PROXY_SECRET (rate limit is per
   for (let i = 0; i < 8; i++) await hit(Object.assign({ 'x-client-ip': '203.0.113.1' }, good));
   assert.equal((await hit(Object.assign({ 'x-client-ip': '203.0.113.1' }, good))).status, 429);
   assert.equal((await hit(Object.assign({ 'x-client-ip': '203.0.113.2' }, good))).status, 401);
-  // wrong secret: header is ignored, so the spoofed IPs all collapse onto the real socket address
+  // wrong secret: the request is refused outright (changed in review: it used to be accepted and rate-limited by socket address,
+  // which let anyone who reached the backend directly dodge the limits with a fake X-Forwarded-For)
   const bad = { 'x-proxy-secret': 'nope' };
-  for (let i = 0; i < 8; i++) await hit(Object.assign({ 'x-client-ip': '198.51.100.' + i }, bad));
-  assert.equal((await hit(Object.assign({ 'x-client-ip': '198.51.100.99' }, bad))).status, 429);
+  for (let i = 0; i < 3; i++) assert.equal((await hit(Object.assign({ 'x-client-ip': '198.51.100.' + i }, bad))).status, 403);
+  assert.equal((await hit({ 'X-Forwarded-For': '198.51.100.7' })).status, 403);
   await t.close();
 });
 test('backend lib/core.js is identical to frontend/core.js (price rules must not drift)', (t) => {

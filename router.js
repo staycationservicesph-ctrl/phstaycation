@@ -41,8 +41,13 @@ async function readJson(req, limit) {
 /* PROXY_SECRET: when the website host (Netlify / Cloudflare) forwards /api/* to this server, every request arrives from the
    proxy's IP. The proxy sends the real visitor IP in x-client-ip plus the shared secret; only then is that header trusted. */
 let TRUSTED_PROXY_SECRET = '';
+/* Constant-time comparison (hash both sides first so different lengths cannot throw or leak). */
+function sameSecret(a, b) {
+  const h = v => crypto.createHash('sha256').update(String(v == null ? '' : v)).digest();
+  return crypto.timingSafeEqual(h(a), h(b));
+}
 function clientIp(req) {
-  if (TRUSTED_PROXY_SECRET && req.headers['x-proxy-secret'] === TRUSTED_PROXY_SECRET && req.headers['x-client-ip']) return String(req.headers['x-client-ip']).trim();
+  if (TRUSTED_PROXY_SECRET && sameSecret(req.headers['x-proxy-secret'], TRUSTED_PROXY_SECRET) && req.headers['x-client-ip']) return String(req.headers['x-client-ip']).trim();
   return String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || String(req.headers['x-real-ip'] || '') || (req.socket && req.socket.remoteAddress) || 'unknown';
 }
 
@@ -301,6 +306,9 @@ function createApp({ store, mailer, env, now, log }) {
     try {
       const url = new URL(req.url, 'http://x');
       const path = url.pathname.replace(/\/+$/, '') || '/';
+      /* When a proxy secret is configured the API is only for the website's own proxy. Anyone calling the backend address directly
+         (which would let them fake X-Forwarded-For and dodge every rate limit and login lockout) is refused. Only /api/health stays open for uptime monitors. */
+      if (TRUSTED_PROXY_SECRET && path !== '/api/health' && !sameSecret(req.headers['x-proxy-secret'], TRUSTED_PROXY_SECRET)) throw new HttpError(403, 'use_the_website');
       const h = routes[req.method + ' ' + path];
       if (!h) {
         const other = Object.keys(routes).filter(k => k.endsWith(' ' + path)).map(k => k.split(' ')[0]);
