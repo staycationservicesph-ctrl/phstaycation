@@ -305,10 +305,18 @@ function createApp({ store, mailer, env, now, log }) {
     'POST /api/admin/rules': adminAddRule, 'POST /api/admin/rules-delete': adminDelRule, 'GET /api/admin/inquiries': adminInquiries
   };
 
+  const CORS_PATHS = new Set(['/api/units', '/api/availability', '/api/bookings', '/api/inquiries', '/api/health']);
   async function handle(req, res) {
     try {
       const url = new URL(req.url, 'http://x');
       const path = url.pathname.replace(/\/+$/, '') || '/';
+      /* CORS, ONLY for the public guest endpoints and ONLY for the website hosts listed in ALLOWED_ORIGINS (website on another host,
+         e.g. Netlify, calling this API directly). No cookies are involved. The admin endpoints never get CORS headers, so the dashboard must be opened on this server's own address. */
+      if (CORS_PATHS.has(path) && req.headers.origin) {
+        let oh = ''; try { oh = new URL(req.headers.origin).host.toLowerCase(); } catch (e) {}
+        if (oh && allowedHosts.includes(oh)) { res.setHeader('Access-Control-Allow-Origin', req.headers.origin); res.setHeader('Vary', 'Origin'); }
+      }
+      if (req.method === 'OPTIONS' && CORS_PATHS.has(path)) { res.writeHead(204, { 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type', 'Access-Control-Max-Age': '86400', 'Cache-Control': 'no-store' }); return res.end(); }
       /* When a proxy secret is configured the API is only for the website's own proxy. Anyone calling the backend address directly
          (which would let them fake X-Forwarded-For and dodge every rate limit and login lockout) is refused. Only /api/health stays open for uptime monitors. */
       if (TRUSTED_PROXY_SECRET && path !== '/api/health' && !sameSecret(req.headers['x-proxy-secret'], TRUSTED_PROXY_SECRET)) throw new HttpError(403, 'use_the_website');
