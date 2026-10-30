@@ -1,0 +1,13 @@
+{
+  "name": "manila-prime-booking",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Manila Prime Staycation booking site: static front end + serverless API + Postgres",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server.js",
+    "test": "node --test",
+    "hash-password": "node scripts/hash-password.js"
+  },
+  "dependencies": { "pg": "^8.13.0" }
+}
