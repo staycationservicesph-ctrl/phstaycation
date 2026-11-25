@@ -2,8 +2,10 @@ import test from 'node:test'; import assert from 'node:assert/strict'; import ht
 const require = createRequire(import.meta.url);
 const { createSqlite } = require('../lib/db'); const { createStore } = require('../lib/store'); const { createMailer } = require('../lib/email'); const { createApp } = require('../lib/router');
 /* The Cloudflare function is an ES module inside a folder Node treats as CommonJS, so load it from its source text. */
-const fnSrc = readFileSync(new URL('../../frontend/functions/api/[[path]].js', import.meta.url), 'utf8');
-const { onRequest } = await import('data:text/javascript;base64,' + Buffer.from(fnSrc).toString('base64'));
+const fnSrc = readFileSync(new URL('../../frontend/_worker.js', import.meta.url), 'utf8');
+const worker = (await import('data:text/javascript;base64,' + Buffer.from(fnSrc).toString('base64'))).default;
+const ASSETS = { fetch: async () => new Response('STATIC-FILE', { status: 200 }) };
+const onRequest = ({ request, env }) => worker.fetch(request, Object.assign({ ASSETS }, env));
 test('Cloudflare proxy function -> backend with the fix: works, passes the cookie, and direct access is refused', async () => {
   const SECRET = 'p'.repeat(30);
   const env = { SESSION_SECRET: 'x'.repeat(40), ADMIN_PASSWORD: 'correct horse battery', PROXY_SECRET: SECRET, ALLOWED_ORIGINS: 'site.pages.dev', EMAIL_PROVIDER: 'none', COOKIE_SECURE: '1' };
@@ -22,5 +24,8 @@ test('Cloudflare proxy function -> backend with the fix: works, passes the cooki
   assert.equal((await fetch(backend + '/api/health')).status, 200); // uptime monitor still works
   const wrongProxy = await onRequest({ request: new Request('https://site.pages.dev/api/units'), env: { BACKEND_URL: backend, PROXY_SECRET: 'q'.repeat(30) } }); assert.equal(wrongProxy.status, 403); // mismatched secret between Cloudflare and Render
   const unconfigured = await onRequest({ request: new Request('https://site.pages.dev/api/units'), env: {} }); assert.equal(unconfigured.status, 503);
+  assert.equal(await (await viaProxy('/index.html')).text(), 'STATIC-FILE'); // everything that is not /api comes from the static files
+  assert.equal(await (await viaProxy('/')).text(), 'STATIC-FILE');
+  assert.equal((await viaProxy('/api')).status, 404); // /api itself is proxied to the backend too, which answers "not found" (not the static site)
   srv.close();
 });
